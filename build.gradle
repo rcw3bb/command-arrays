@@ -3,6 +3,9 @@ plugins {
     id 'org.javamodularity.moduleplugin' version '1.8.10'
     id 'jacoco'
     id 'pmd'
+    id 'maven-publish'
+    id "io.github.gradle-nexus.publish-plugin" version "1.1.0"
+    id 'signing'
 }
 
 group 'xyz.ronella.casual'
@@ -70,6 +73,70 @@ task testsJar(type: Jar, dependsOn: [testClasses]) {
 }
 
 jar.finalizedBy(javadocJar, sourcesJar, testsJar)
+
+java {
+    withJavadocJar()
+    withSourcesJar()
+}
+
+publishing {
+    publications {
+        repositories.maven {
+            def publishingPath = version.toString().contains("SNAPSHOT") ? 'snapshots' : 'internal'
+            url "https://repo.ronella.xyz/archiva/repository/${publishingPath}/"
+            credentials {
+                username "${archivaUsername}"
+                password "${archivaPassword}"
+            }
+        }
+        mavenJava(MavenPublication) {
+            from components.java
+            artifact testsJar
+            pom {
+                name = 'Command Arrays'
+                description = 'A library of generating a command array compatible with CommandRunner from module xyz.ronella.casual.trivial'
+                url = 'https://github.com/rcw3bb/command-arrays'
+                properties = [
+                        "inceptionYear": '2022'
+                ]
+                licenses {
+                    license {
+                        name = 'MIT License'
+                        url = 'https://github.com/rcw3bb/command-arrays/blob/master/LICENSE.md'
+                    }
+                }
+                developers {
+                    developer {
+                        id = 'rcw3bb'
+                        name = 'Ronaldo Webb'
+                        email = 'ronaldo.c.webb@gmail.com'
+                    }
+                }
+                scm {
+                    connection = 'https://github.com/rcw3bb/command-arrays.git'
+                    developerConnection = 'https://github.com/rcw3bb/command-arrays.git'
+                    url = 'https://github.com/rcw3bb/command-arrays'
+                }
+            }
+        }
+    }
+}
+
+signing {
+    sign publishing.publications.mavenJava
+}
+
+nexusPublishing {
+    repositories {
+        sonatype {
+            nexusUrl = uri('https://oss.sonatype.org/service/local/')
+            snapshotRepositoryUrl = uri('https://oss.sonatype.org/content/repositories/snapshots/')
+            //stagingProfileId = ""
+        }
+    }
+}
+
+closeAndReleaseSonatypeStagingRepository.dependsOn('publishToSonatype')
 
 test {
     dependsOn(pmdMain)
