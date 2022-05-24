@@ -215,6 +215,9 @@ public final class PowerShell implements ICommandArray {
          */
         public PowerShellBuilder setEncodedCommand(final String command) {
             final var base64Command = Base64.getEncoder().encodeToString(command.getBytes(StandardCharsets.UTF_16LE));
+            if (determineAdminMode()) {
+                this.command = PROGRAM;
+            }
             encodedCommand = List.of("-EncodedCommand", base64Command);
             return this;
         }

@@ -59,6 +59,20 @@ public class PowerShellTest {
     }
 
     @Test
+    public void encodedCommandAdminMode() {
+        var helloWorldOutput = "Write-Output \"Hello World\"";
+
+        var expected = "powershell.exe Exit (Start-Process \"powershell.exe\" -Wait -PassThru -Verb RunAs -argumentlist \"\"\"-EncodedCommand\"\"\",\"\"\"VwByAGkAdABlAC0ATwB1AHQAcAB1AHQAIAAiAEgAZQBsAGwAbwAgAFcAbwByAGwAZAAiAA==\"\"\").ExitCode";
+        var ps = PowerShell.getBuilder()
+                .setAdminMode(true)
+                .enableDefaultArgs(false)
+                .setEncodedCommand(helloWorldOutput)
+                .build();
+
+        assertEquals(expected, String.join(" ", ps.getCommand()));
+    }
+
+    @Test
     public void multipleEncodedCommand() {
         var helloWorldOutput = "Write-Output \"Hello World\"";
         var base64HelloWorld = Base64.getEncoder().encodeToString(helloWorldOutput.getBytes(StandardCharsets.UTF_16LE));
