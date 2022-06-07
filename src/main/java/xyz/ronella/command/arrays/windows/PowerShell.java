@@ -28,7 +28,7 @@ public final class PowerShell implements ICommandArray {
 
     private PowerShell(final PowerShellBuilder builder) {
         final var arrayBuilder = CommandArray.getBuilder()
-                .addArgs(builder.args).addZArgs(builder.zArgs);
+                .addArgs(builder.args);
 
         if (!builder.stopProgramName) {
             arrayBuilder.setProgram(PROGRAM);
@@ -69,7 +69,6 @@ public final class PowerShell implements ICommandArray {
         private String command;
         private final List<String> progArgs;
         private final List<String> args;
-        private final List<String> zArgs;
         private final List<String> inputArgs;
         private final List<String> inputZArgs;
         private final List<String> adminModeHeader;
@@ -84,7 +83,6 @@ public final class PowerShell implements ICommandArray {
         private PowerShellBuilder() {
             progArgs = new ArrayList<>();
             args = new ArrayList<>();
-            zArgs = new ArrayList<>();
             inputArgs = new ArrayList<>();
             inputZArgs = new ArrayList<>();
             adminModeHeader = new ArrayList<>();
