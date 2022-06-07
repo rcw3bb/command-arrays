@@ -130,7 +130,9 @@ public final class PowerShell implements ICommandArray {
                     final var sbArgs = inputArgsToStringBuilder(___args);
                     final var adminCommand = String.format("Exit (Start-Process %s -Wait -PassThru -Verb RunAs%s%s).ExitCode",
                             quote(___command), sbArgs.length() == 0 ? "" : " -argumentlist ", sbArgs);
-                    args.add("-EncodedCommand");
+                    final var argsAdder = new ListAdder<>(args);
+                    argsAdder.addAll(()-> PROGRAM.equals(___command.toLowerCase(Locale.ROOT)), List.of("-WindowStyle","Hidden"));
+                    argsAdder.add("-EncodedCommand");
                     final var sbAdminCommand = new StringBuilder();
                     adminModeHeader.stream().map(___header -> ___header + "\n").forEach(sbAdminCommand::append);
                     sbAdminCommand.append(adminCommand);
@@ -160,10 +162,8 @@ public final class PowerShell implements ICommandArray {
                 final var allInputs = getAllInputArgs();
                 addrArgs.add(()-> command!=null, ()-> command.matches(REGEX_RAW_PREFIX) ? command : quote(command));
                 addrArgs.addAll(()-> !allInputs.isEmpty(), allInputs.stream()
-                        .map(___arg -> {
-                            return isRawArgs || ___arg.matches(REGEX_RAW_PREFIX) || encodedArgs.contains(___arg)
-                                ? ___arg : tripleQuote(___arg);
-                        })
+                        .map(___arg -> isRawArgs || ___arg.matches(REGEX_RAW_PREFIX) || encodedArgs.contains(___arg)
+                            ? ___arg : tripleQuote(___arg))
                         .collect(Collectors.toList()));
             }
         }
