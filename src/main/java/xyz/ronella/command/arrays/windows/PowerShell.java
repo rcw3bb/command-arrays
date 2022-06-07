@@ -1,15 +1,18 @@
 package xyz.ronella.command.arrays.windows;
 
 import xyz.ronella.trivial.decorator.ListAdder;
+import xyz.ronella.trivial.decorator.StringBuilderAppender;
 import xyz.ronella.trivial.handy.ICommandArray;
 import xyz.ronella.trivial.handy.impl.CommandArray;
 
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.function.BiFunction;
+import java.util.function.BooleanSupplier;
+import java.util.stream.Collectors;
 
 /**
- * PowerShell implemenation of ICommandArray.
+ * PowerShell implementation of ICommandArray.
  *
  * @author Ron Webb
  * @since 1.0.0
@@ -24,11 +27,14 @@ public final class PowerShell implements ICommandArray {
     private final ICommandArray array;
 
     private PowerShell(final PowerShellBuilder builder) {
-        this.array = CommandArray.getBuilder()
-                .setProgram(PROGRAM)
-                .addArgs(builder.args)
-                .addZArgs(builder.zArgs)
-                .build();
+        final var arrayBuilder = CommandArray.getBuilder()
+                .addArgs(builder.args).addZArgs(builder.zArgs);
+
+        if (!builder.stopProgramName) {
+            arrayBuilder.setProgram(PROGRAM);
+        }
+
+        this.array = arrayBuilder.build();
     }
 
     /**
@@ -58,21 +64,31 @@ public final class PowerShell implements ICommandArray {
          */
         public static final List<String> DEFAULT_ARGS = List.of("-NoProfile", "-InputFormat", "None", "-ExecutionPolicy", "Bypass");
 
+        private static final String REGEX_RAW_PREFIX = "^[\"'&{].*";
+
         private String command;
+        private final List<String> progArgs;
         private final List<String> args;
         private final List<String> zArgs;
         private final List<String> inputArgs;
-        private List<String> encodedCommand;
+        private final List<String> inputZArgs;
+        private final List<String> adminModeHeader;
+        private final List<String> encodedArgs;
         private boolean hasDefaultArgs;
         private boolean isAdminMode;
         private boolean prefNonAdminMode;
+        private boolean stopProgramName;
+        private boolean isRawArgs;
         private BiFunction<String, List<String>, String> adminLogic;
-        private BiFunction<String, List<String>, String> commandLogic;
 
         private PowerShellBuilder() {
+            progArgs = new ArrayList<>();
             args = new ArrayList<>();
             zArgs = new ArrayList<>();
             inputArgs = new ArrayList<>();
+            inputZArgs = new ArrayList<>();
+            adminModeHeader = new ArrayList<>();
+            encodedArgs = new ArrayList<>();
         }
 
         private String quote(final String text) {
@@ -84,56 +100,71 @@ public final class PowerShell implements ICommandArray {
         }
 
         private boolean determineAdminMode() {
-            if (isAdminMode) {
-                if (prefNonAdminMode && RunAsChecker.isElevatedMode()) {
-                    return false;
-                }
-                else {
-                    return isAdminMode;
-                }
+            boolean output=false;
+            if (isAdminMode && !(prefNonAdminMode && RunAsChecker.isElevatedMode())) {
+                output = isAdminMode;
             }
-            return false;
+            return output;
         }
 
         private StringBuilder inputArgsToStringBuilder(final List<String> args) {
             final var sbArgs = new StringBuilder();
-            args.forEach(___arg -> sbArgs.append(sbArgs.length()>0 ? ",": "").append(tripleQuote(___arg)));
+            final var appenderArgs = new StringBuilderAppender(sbArgs);
+            args.forEach(___arg -> {
+                appenderArgs.append(() -> sbArgs.length() > 0, ",");
+                    if (isRawArgs || ___arg.matches(REGEX_RAW_PREFIX) || encodedArgs.contains(___arg)) {
+                        appenderArgs.append(___arg);
+                    } else {
+                        appenderArgs.append(tripleQuote(___arg));
+                    }
+                }
+            );
             return sbArgs;
         }
 
         private void adminModeLogic(final ListAdder<String> addrArgs) {
             addrArgs.add(() -> {
                 final var logic = Optional.ofNullable(this.adminLogic);
+                final var internalCommand =  Optional.ofNullable(command).orElse(PROGRAM);
                 return logic.orElseGet(()-> (___command, ___args)-> {
                     final var sbArgs = inputArgsToStringBuilder(___args);
-                    return String.format("Exit (Start-Process %s -Wait -PassThru -Verb RunAs%s%s).ExitCode",
+                    final var adminCommand = String.format("Exit (Start-Process %s -Wait -PassThru -Verb RunAs%s%s).ExitCode",
                             quote(___command), sbArgs.length() == 0 ? "" : " -argumentlist ", sbArgs);
-                }).apply(command, inputArgs);
+                    args.add("-EncodedCommand");
+                    final var sbAdminCommand = new StringBuilder();
+                    adminModeHeader.stream().map(___header -> ___header + "\n").forEach(sbAdminCommand::append);
+                    sbAdminCommand.append(adminCommand);
+                    return encodeCommand(sbAdminCommand.toString());
+                }).apply(internalCommand, getAllInputArgs());
             });
+        }
+
+        private List<String> getAllInputArgs() {
+            final var allInputs = new ArrayList<String>();
+            final var adder = new ListAdder<>(allInputs);
+            adder.addAll(()-> !inputArgs.isEmpty(), inputArgs);
+            adder.addAll(()-> !inputZArgs.isEmpty(), inputZArgs);
+
+            return allInputs;
         }
 
         private void prepareArgs() {
             final var addrArgs = new ListAdder<>(args);
             addrArgs.addAll(()-> hasDefaultArgs, DEFAULT_ARGS);
-
-            final var addrInputArgs = new ListAdder<>(inputArgs);
-            addrInputArgs.addAll(()-> null!=encodedCommand, encodedCommand);
+            addrArgs.addAll(()-> !progArgs.isEmpty(), progArgs);
 
             if (determineAdminMode()) {
                 adminModeLogic(addrArgs);
             }
             else {
-                if (null != command) {
-                    addrArgs.add(() -> {
-                        final var logic = Optional.ofNullable(this.commandLogic);
-                        return logic.orElseGet(()-> (___command, ___args)-> {
-                            final var sbArgs = inputArgsToStringBuilder(___args);
-                            return String.format("-Command \"& {%s %s}\"", quote(command), sbArgs);
-                        }).apply(command, inputArgs);
-                    });
-                } else {
-                    addrArgs.addAll(inputArgs);
-                }
+                final var allInputs = getAllInputArgs();
+                addrArgs.add(()-> command!=null, ()-> command.matches(REGEX_RAW_PREFIX) ? command : quote(command));
+                addrArgs.addAll(()-> !allInputs.isEmpty(), allInputs.stream()
+                        .map(___arg -> {
+                            return isRawArgs || ___arg.matches(REGEX_RAW_PREFIX) || encodedArgs.contains(___arg)
+                                ? ___arg : tripleQuote(___arg);
+                        })
+                        .collect(Collectors.toList()));
             }
         }
 
@@ -153,6 +184,19 @@ public final class PowerShell implements ICommandArray {
          */
         public PowerShellBuilder setCommand(final String command) {
             this.command = command;
+            return this;
+        }
+
+        /**
+         * Set the command to use with powershell.
+         * @param when Only apply the method when this returns true.
+         * @param command The command to use with powershell.
+         * @return An instance of PowerShellBuilder.
+         */
+        public PowerShellBuilder setCommand(final BooleanSupplier when, final String command) {
+            if (when.getAsBoolean()) {
+                this.command = command;
+            }
             return this;
         }
 
@@ -179,6 +223,19 @@ public final class PowerShell implements ICommandArray {
         }
 
         /**
+         * Use this to add normal arguments to powershell.
+         * @param when Only apply the method when this returns true.
+         * @param args The arguments to be added.
+         * @return An instance of PowerShellBuilder.
+         */
+        public PowerShellBuilder addArgs(final BooleanSupplier when, final Collection<String> args) {
+            if (when.getAsBoolean()) {
+                this.inputArgs.addAll(args);
+            }
+            return this;
+        }
+
+        /**
          * Use this to add normal argument to powershell.
          * @param arg The single argument to be added.
          * @return An instance of PowerShellBuilder.
@@ -189,12 +246,163 @@ public final class PowerShell implements ICommandArray {
         }
 
         /**
+         * Use this to add header command for adminModeLogic.
+         *
+         * @param header The single header command to be added.
+         * @return An instance of PowerShellBuilder.
+         */
+        public PowerShellBuilder addAdminHeader(final String header) {
+            this.adminModeHeader.add(header);
+            return this;
+        }
+
+        /**
+         * Use this to add header command for adminModeLogic.
+         * @param when Only apply the method when this returns true.
+         * @param header The single header command to be added.
+         * @return An instance of PowerShellBuilder.
+         */
+        public PowerShellBuilder addAdminHeader(final BooleanSupplier when, final String header) {
+            if (when.getAsBoolean()) {
+                this.adminModeHeader.add(header);
+            }
+            return this;
+        }
+
+        /**
+         * Use this to add header commands for adminModeLogic.
+         *
+         * @param headers The header commands to be added.
+         * @return An instance of PowerShellBuilder.
+         */
+        public PowerShellBuilder addAdminHeader(final Collection<String> headers) {
+            this.adminModeHeader.addAll(headers);
+            return this;
+        }
+
+        /**
+         * Use this to add header commands for adminModeLogic.
+         * @param when Only apply the method when this returns true.
+         * @param headers The header commands to be added.
+         * @return An instance of PowerShellBuilder.
+         */
+        public PowerShellBuilder addAdminHeader(final BooleanSupplier when, final Collection<String> headers) {
+            if (when.getAsBoolean()) {
+                this.adminModeHeader.addAll(headers);
+            }
+            return this;
+        }
+
+        /**
+         * Use this to add normal arguments to powershell program itself.
+         * @param args The arguments to be added.
+         * @return An instance of PowerShellBuilder.
+         */
+        public PowerShellBuilder addPArgs(final List<String> args) {
+            this.progArgs.addAll(args);
+            return this;
+        }
+
+        /**
+         * Use this to add normal arguments to powershell program itself.
+         * @param when Only apply the method when this returns true.
+         * @param args The arguments to be added.
+         * @return An instance of PowerShellBuilder.
+         */
+        public PowerShellBuilder addPArgs(final BooleanSupplier when, final List<String> args) {
+            if (when.getAsBoolean()) {
+                this.progArgs.addAll(args);
+            }
+            return this;
+        }
+
+        /**
+         * Use this to add normal argument to powershell program itself.
+         * @param arg The single argument to be added.
+         * @return An instance of PowerShellBuilder.
+         */
+        public PowerShellBuilder addPArg(final String arg) {
+            this.progArgs.add(arg);
+            return this;
+        }
+
+        /**
+         * Use this to add normal argument to powershell program itself.
+         * @param when Only apply the method when this returns true.
+         * @param arg The single argument to be added.
+         * @return An instance of PowerShellBuilder.
+         */
+        public PowerShellBuilder addPArg(final BooleanSupplier when, final String arg) {
+            if (when.getAsBoolean()) {
+                this.progArgs.add(arg);
+            }
+            return this;
+        }
+
+        private String encodeCommand(final String command) {
+            return Base64.getEncoder().encodeToString(command.getBytes(StandardCharsets.UTF_16LE));
+        }
+
+        /**
+         * Use this to add normal encoded argument to powershell.
+         * This must be an argument to -EncodedCommand parameter.
+         * @param arg The single argument to be added.
+         * @return An instance of PowerShellBuilder.
+         */
+        public PowerShellBuilder addEncodedArg(final String arg) {
+            final var encodedArg = encodeCommand(arg);
+            this.inputArgs.add(encodedArg);
+            this.encodedArgs.add(encodedArg);
+            return this;
+        }
+
+        /**
+         * Use this to add normal encoded argument to powershell.
+         * This must be an argument to -EncodedCommand parameter.
+         * @param when Only apply the method when this returns true.
+         * @param arg The single argument to be added.
+         * @return An instance of PowerShellBuilder.
+         */
+        public PowerShellBuilder addEncodedArg(final BooleanSupplier when, final String arg) {
+            if (when.getAsBoolean()) {
+                addEncodedArg(arg);
+            }
+            return this;
+        }
+
+        /**
+         * Use this to add normal argument to powershell.
+         * @param when Only apply the method when this returns true.
+         * @param arg The single argument to be added.
+         * @return An instance of PowerShellBuilder.
+         */
+        public PowerShellBuilder addArg(final BooleanSupplier when, final String arg) {
+            if (when.getAsBoolean()) {
+                this.inputArgs.add(arg);
+            }
+            return this;
+        }
+
+        /**
          * Use this to add arguments after the normal arguments.
          * @param zArgs The arguments to be added.
          * @return An instance of PowerShellBuilder.
          */
         public PowerShellBuilder addZArgs(final Collection<String> zArgs) {
-            this.zArgs.addAll(zArgs);
+            this.inputZArgs.addAll(zArgs);
+            return this;
+        }
+
+        /**
+         * Use this to add arguments after the normal arguments.
+         * @param when Only apply the method when this returns true.
+         * @param zArgs The arguments to be added.
+         * @return An instance of PowerShellBuilder.
+         */
+        public PowerShellBuilder addZArgs(final BooleanSupplier when, final Collection<String> zArgs) {
+            if (when.getAsBoolean()) {
+                this.inputZArgs.addAll(zArgs);
+            }
             return this;
         }
 
@@ -204,21 +412,20 @@ public final class PowerShell implements ICommandArray {
          * @return An instance of PowerShellBuilder.
          */
         public PowerShellBuilder addZArg(final String zArg) {
-            this.zArgs.add(zArg);
+            this.inputZArgs.add(zArg);
             return this;
         }
 
         /**
-         * Add the command as encoded for encoded command paramter.
-         * @param command The command to feed on -EncodedCommand parameter.
+         * Use this to add an argument after the normal arguments.
+         * @param when Only apply the method when this returns true.
+         * @param zArg The argument to be added.
          * @return An instance of PowerShellBuilder.
          */
-        public PowerShellBuilder setEncodedCommand(final String command) {
-            final var base64Command = Base64.getEncoder().encodeToString(command.getBytes(StandardCharsets.UTF_16LE));
-            if (determineAdminMode()) {
-                this.command = PROGRAM;
+        public PowerShellBuilder addZArg(final BooleanSupplier when, final String zArg) {
+            if (when.getAsBoolean()) {
+                this.inputZArgs.add(zArg);
             }
-            encodedCommand = List.of("-EncodedCommand", base64Command);
             return this;
         }
 
@@ -261,19 +468,24 @@ public final class PowerShell implements ICommandArray {
         }
 
         /**
-         * Overrides the generation of command. The default is the following:
-         *
-         * {@code (___command, ___args)-> {
-         *         var sbArgs = inputArgsToStringBuilder(___args);
-         *         return String.format("-Command \"& {%s %s}\"", quote(command), sbArgs);
-         *     }).apply(command, inputArgs);
-         * }}
-         *
-         * @param commandLogic Must hold the override logic.
+         * Stop the program name from being included when set to true.
+         * @param suppress Set to true to stop the program name from being included in the generated command array.
          * @return An instance of PowerShellBuilder.
          */
-        public PowerShellBuilder setCommandLogic(final BiFunction<String, List<String>, String> commandLogic) {
-            this.commandLogic = commandLogic;
+        public PowerShellBuilder suppressProgramName(final boolean suppress) {
+            this.stopProgramName = suppress;
+            return this;
+        }
+
+        /**
+         * Don't do any reprocessing of arguments when set to true.
+         * An example of reprocessing is adding triple quotes when preparing the admin mode command.
+         *
+         * @param raw Set to true to avoid argument reprocessing.
+         * @return An instance of PowerShellBuilder.
+         */
+        public PowerShellBuilder setRawArgs(final boolean raw) {
+            this.isRawArgs = raw;
             return this;
         }
     }

@@ -9,11 +9,11 @@
 
     <rule ref="category/java/bestpractices.xml" />
     <rule ref="category/java/codestyle.xml" >
-        <exclude name="OnlyOneReturn"/>
         <exclude name="FormalParameterNamingConventions"/>
         <exclude name="LinguisticNaming"/>
     </rule>
     <rule ref="category/java/design.xml" >
+        <exclude name="GodClass"/>
         <exclude name="TooManyMethods"/>
         <exclude name="LawOfDemeter"/>
         <exclude name="LoosePackageCoupling"/>

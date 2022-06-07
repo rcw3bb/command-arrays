@@ -25,18 +25,19 @@ public final class RunAsChecker {
         final String pid = ManagementFactory.getRuntimeMXBean().getName().replace("@", "-");
         final String fileName = String.format("runas-checker-%s.dummy", pid);
         final File file = Paths.get(System.getenv("SystemRoot"), fileName).toFile();
+        boolean output = false;
         try {
             if (file.createNewFile()) {
                 file.delete();
-                return true;
+                output = true;
             }
         } catch (IOException e) {
             if ("Access is denied".equalsIgnoreCase(e.getMessage())) {
-                return false;
+                output = false;
             } else {
                 e.printStackTrace(System.err);
             }
         }
-        return false;
+        return output;
     }
 }
