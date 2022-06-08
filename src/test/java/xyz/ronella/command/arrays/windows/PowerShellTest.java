@@ -600,7 +600,7 @@ public class PowerShellTest {
 
     @Test
     public void keytoolScriptTest() {
-        var expected = "-NoProfile -InputFormat None -ExecutionPolicy Bypass '-Command' {\n" +
+        var expected = "-NoProfile -InputFormat None -ExecutionPolicy Bypass -Command {\n" +
                 "& 'C:\\Program Files\\OpenJDK\\jdk-17.0.1\\bin\\keytool.exe' '-delete' '-cacerts' '-storepass' 'changeit' '-alias' 'CiscoUmbrella.cer [sk]'\n" +
                 "& 'C:\\Program Files\\OpenJDK\\jdk-17.0.1\\bin\\keytool.exe' '-delete' '-cacerts' '-storepass' 'changeit' '-alias' 'EncryptIt.cer [sk]'\n" +
                 "& 'C:\\Program Files\\OpenJDK\\jdk-17.0.1\\bin\\keytool.exe' '-delete' '-cacerts' '-storepass' 'changeit' '-alias' 'R3-2025.cer [sk]'\n" +
@@ -618,8 +618,7 @@ public class PowerShellTest {
             var ps = PowerShell.getBuilder()
                     .enableDefaultArgs(true)
                     .suppressProgramName(true)
-                    .setRawArgs(true)
-                    .setCommand("'-Command'")
+                    .addArg("literal:-Command")
                     .addArg(String.format("{\n%s\n}", String.join("\n", scriptCommands)))
                     .build();
 

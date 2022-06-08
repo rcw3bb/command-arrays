@@ -65,7 +65,8 @@ public final class PowerShell implements ICommandArray {
         public static final List<String> DEFAULT_ARGS = List.of("-NoProfile", "-InputFormat", "None", "-ExecutionPolicy", "Bypass");
 
         private static final String REGEX_RAW_PREFIX = "^[\"'&{].*";
-
+        private static final String REGEX_LITERAL = "^[Ll][Ii][Tt][Ee][Rr][Aa][Ll]:";
+        private static final String LITERAL_MATCHER = String.format("%s(.*)", REGEX_LITERAL);
         private String command;
         private final List<String> progArgs;
         private final List<String> args;
@@ -93,6 +94,12 @@ public final class PowerShell implements ICommandArray {
             return String.format("\"%s\"", text);
         }
 
+        private String condTripleQuote(final String text) {
+            return argToSingleLine(text).matches(LITERAL_MATCHER)
+                    ? text.replaceFirst(REGEX_LITERAL, "")
+                    : tripleQuote(text);
+        }
+
         private String tripleQuote(final String text) {
             return String.format("\"\"\"%s\"\"\"", text);
         }
@@ -110,13 +117,12 @@ public final class PowerShell implements ICommandArray {
             final var appenderArgs = new StringBuilderAppender(sbArgs);
             args.forEach(___arg -> {
                 appenderArgs.append(() -> sbArgs.length() > 0, ",");
-                    if (isRawArgs || ___arg.matches(REGEX_RAW_PREFIX) || encodedArgs.contains(___arg)) {
-                        appenderArgs.append(___arg);
-                    } else {
-                        appenderArgs.append(tripleQuote(___arg));
-                    }
+                if (rawArgQualifier(___arg)) {
+                    appenderArgs.append(___arg);
+                } else {
+                    appenderArgs.append(condTripleQuote(___arg));
                 }
-            );
+            });
             return sbArgs;
         }
 
@@ -148,6 +154,19 @@ public final class PowerShell implements ICommandArray {
             return allInputs;
         }
 
+        private String argToSingleLine(final String arg) {
+            return arg.replaceAll("[\n\r]", " ");
+        }
+
+        private boolean rawRegexQualifier(final String arg) {
+            final var singeLineArg = argToSingleLine(arg);
+            return singeLineArg.matches(REGEX_RAW_PREFIX);
+        }
+
+        private boolean rawArgQualifier(final String arg) {
+            return isRawArgs || encodedArgs.contains(arg) || rawRegexQualifier(arg);
+        }
+
         private void prepareArgs() {
             final var addrArgs = new ListAdder<>(args);
             addrArgs.addAll(()-> hasDefaultArgs, DEFAULT_ARGS);
@@ -160,8 +179,7 @@ public final class PowerShell implements ICommandArray {
                 final var allInputs = getAllInputArgs();
                 addrArgs.add(()-> command!=null, ()-> command.matches(REGEX_RAW_PREFIX) ? command : quote(command));
                 addrArgs.addAll(()-> !allInputs.isEmpty(), allInputs.stream()
-                        .map(___arg -> isRawArgs || ___arg.matches(REGEX_RAW_PREFIX) || encodedArgs.contains(___arg)
-                            ? ___arg : tripleQuote(___arg))
+                        .map(___arg -> rawArgQualifier(___arg) ? ___arg : condTripleQuote(___arg))
                         .collect(Collectors.toList()));
             }
         }
