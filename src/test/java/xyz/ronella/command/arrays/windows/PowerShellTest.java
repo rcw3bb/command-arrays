@@ -143,11 +143,12 @@ public class PowerShellTest {
 
     @Test
     public void nonAdminModeWriteOutput() {
-        var expected = "powershell.exe \"-Command\" \"Write-Output\" \"\"\"Hello world\"\"\"";
+        var expected = "powershell.exe -EncodedCommand " +
+                "RQB4AGkAdAAgACgAUwB0AGEAcgB0AC0AUAByAG8AYwBlAHMAcwAgACIAYwBtAGQAIgAgAC0AVwBhAGkAdAAgAC0AUABhAHMAcwBUAGgAcgB1ACAALQBhAHIAZwB1AG0AZQBuAHQAbABpAHMAdAAgACcALwBrACcALAAnAGUAYwBoAG8AIAB0AGUAcwB0ACcAKQAuAEUAeABpAHQAQwBvAGQAZQA=";
 
         var ps = PowerShell.getBuilder()
-                .setCommand("\"-Command\"")
-                .addArgs(List.of("\"Write-Output\"", "Hello world"))
+                .setCommand("cmd")
+                .addArgs(List.of("'/k'", "literal:'echo test'"))
                 .setAdminMode(false)
                 .build();
 
@@ -518,7 +519,7 @@ public class PowerShellTest {
 
     @Test
     public void adminModePreferNonAdminElevated() {
-        var expected = "powershell.exe -NoProfile -InputFormat None -ExecutionPolicy Bypass \"-Command\" \"Write-Output\" \"\"\"Hello world\"\"\"";
+        var expected = "powershell.exe -NoProfile -InputFormat None -ExecutionPolicy Bypass -EncodedCommand RQB4AGkAdAAgACgAUwB0AGEAcgB0AC0AUAByAG8AYwBlAHMAcwAgACIALQBDAG8AbQBtAGEAbgBkACIAIAAtAFcAYQBpAHQAIAAtAFAAYQBzAHMAVABoAHIAdQAgAC0AYQByAGcAdQBtAGUAbgB0AGwAaQBzAHQAIAAiAFcAcgBpAHQAZQAtAE8AdQB0AHAAdQB0ACIALAAiACIAIgBIAGUAbABsAG8AIAB3AG8AcgBsAGQAIgAiACIAKQAuAEUAeABpAHQAQwBvAGQAZQA=";
 
         try (var checker = Mockito.mockStatic(RunAsChecker.class)) {
             checker.when(RunAsChecker::isElevatedMode).thenReturn(true);

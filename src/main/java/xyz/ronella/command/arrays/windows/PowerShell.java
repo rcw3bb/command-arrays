@@ -75,7 +75,7 @@ public final class PowerShell implements ICommandArray {
         private final List<String> adminModeHeader;
         private final List<String> encodedArgs;
         private boolean hasDefaultArgs;
-        private boolean isAdminMode;
+        private Boolean isAdminMode;
         private boolean prefNonAdminMode;
         private boolean stopProgramName;
         private boolean isRawArgs;
@@ -88,6 +88,21 @@ public final class PowerShell implements ICommandArray {
             inputZArgs = new ArrayList<>();
             adminModeHeader = new ArrayList<>();
             encodedArgs = new ArrayList<>();
+        }
+
+        private String condQuote(final String text) {
+            return condQuote(text, false);
+        }
+
+        private String condQuote(final String text, final boolean forceQuote) {
+            var output = quote(text);
+
+            if (text.matches(LITERAL_MATCHER)) {
+                final var cleanedText = text.replaceFirst(REGEX_LITERAL, "");
+                output = forceQuote ? quote(cleanedText) : cleanedText;
+            }
+
+            return output;
         }
 
         private String quote(final String text) {
@@ -106,17 +121,17 @@ public final class PowerShell implements ICommandArray {
 
         private boolean determineAdminMode() {
             boolean output=false;
-            if (isAdminMode && !(prefNonAdminMode && RunAsChecker.isElevatedMode())) {
+            if (null!=isAdminMode && isAdminMode && !(prefNonAdminMode && RunAsChecker.isElevatedMode())) {
                 output = isAdminMode;
             }
             return output;
         }
 
-        private StringBuilder inputArgsToStringBuilder(final List<String> args) {
+        private StringBuilder inputArgsToStringBuilder(final List<String> args, final String delimiter) {
             final var sbArgs = new StringBuilder();
             final var appenderArgs = new StringBuilderAppender(sbArgs);
             args.forEach(___arg -> {
-                appenderArgs.append(() -> sbArgs.length() > 0, ",");
+                appenderArgs.append(() -> sbArgs.length() > 0, delimiter);
                 if (rawArgQualifier(___arg)) {
                     appenderArgs.append(___arg);
                 } else {
@@ -126,14 +141,14 @@ public final class PowerShell implements ICommandArray {
             return sbArgs;
         }
 
-        private void adminModeLogic(final ListAdder<String> addrArgs) {
+        private void adminModeLogic(final ListAdder<String> addrArgs, final boolean isAdmin) {
             addrArgs.add(() -> {
                 final var logic = Optional.ofNullable(this.adminLogic);
                 final var internalCommand =  Optional.ofNullable(command).orElse(PROGRAM);
                 return logic.orElseGet(()-> (___command, ___args)-> {
-                    final var sbArgs = inputArgsToStringBuilder(___args);
-                    final var adminCommand = String.format("Exit (Start-Process %s -Wait -PassThru -Verb RunAs%s%s).ExitCode",
-                            quote(___command), sbArgs.length() == 0 ? "" : " -argumentlist ", sbArgs);
+                    final var sbArgs = inputArgsToStringBuilder(___args, ",");
+                    final var adminCommand = String.format("Exit (Start-Process %s -Wait -PassThru%s%s%s).ExitCode",
+                            condQuote(___command), isAdmin ? " -Verb RunAs": "", sbArgs.length() == 0 ? "" : " -argumentlist ", sbArgs);
                     final var argsAdder = new ListAdder<>(args);
                     argsAdder.addAll(()-> PROGRAM.equals(___command.toLowerCase(Locale.ROOT)), List.of("-WindowStyle","Hidden"));
                     argsAdder.add("-EncodedCommand");
@@ -172,12 +187,12 @@ public final class PowerShell implements ICommandArray {
             addrArgs.addAll(()-> hasDefaultArgs, DEFAULT_ARGS);
             addrArgs.addAll(()-> !progArgs.isEmpty(), progArgs);
 
-            if (determineAdminMode()) {
-                adminModeLogic(addrArgs);
+            if (null != isAdminMode) {
+                adminModeLogic(addrArgs, determineAdminMode());
             }
             else {
                 final var allInputs = getAllInputArgs();
-                addrArgs.add(()-> command!=null, ()-> command.matches(REGEX_RAW_PREFIX) ? command : quote(command));
+                addrArgs.add(()-> command!=null, ()-> command.matches(REGEX_RAW_PREFIX) ? command : condQuote(command));
                 addrArgs.addAll(()-> !allInputs.isEmpty(), allInputs.stream()
                         .map(___arg -> rawArgQualifier(___arg) ? ___arg : condTripleQuote(___arg))
                         .collect(Collectors.toList()));
