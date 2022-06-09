@@ -63,8 +63,7 @@ public final class PowerShell implements ICommandArray {
         /**
          * The default arguments to be added to the powershell command when it is enabled.
          */
-        public static final List<String> DEFAULT_ARGS = List.of("-NoProfile", "-InputFormat", "None", "-ExecutionPolicy", "Bypass");
-
+        private static final List<String> DEFAULT_ARGS = List.of("-NoProfile", "-InputFormat", "None", "-ExecutionPolicy", "Bypass");
         private static final String REGEX_RAW_PREFIX = "^[\"'&{].*";
         private static final String REGEX_LITERAL = "^[Ll][Ii][Tt][Ee][Rr][Aa][Ll]:";
         private static final String LITERAL_MATCHER = String.format("%s(.*)", REGEX_LITERAL);

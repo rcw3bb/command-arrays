@@ -28,7 +28,7 @@ public class PowerShellTest {
     public void defaultArgsWithOtherArgs() {
         var expectedArray = new LinkedList<String>();
         expectedArray.add("powershell.exe");
-        expectedArray.addAll(PowerShell.PowerShellBuilder.DEFAULT_ARGS);
+        expectedArray.addAll(List.of("-NoProfile", "-InputFormat", "None", "-ExecutionPolicy", "Bypass"));
         expectedArray.add("\"\"\"Dummy\"\"\"");
         var ps = PowerShell.getBuilder()
                 .addArg("Dummy")
