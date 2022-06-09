@@ -8,7 +8,6 @@ import xyz.ronella.trivial.handy.impl.CommandArray;
 
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.function.BiFunction;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
@@ -79,7 +78,7 @@ public final class PowerShell implements ICommandArray {
         private boolean prefNonAdminMode;
         private boolean stopProgramName;
         private boolean isRawArgs;
-        private BiFunction<String, List<String>, String> adminLogic;
+        private IPSAdminModeLogic adminLogic;
 
         private PowerShellBuilder() {
             progArgs = new ArrayList<>();
@@ -145,10 +144,10 @@ public final class PowerShell implements ICommandArray {
             addrArgs.add(() -> {
                 final var logic = Optional.ofNullable(this.adminLogic);
                 final var internalCommand =  Optional.ofNullable(command).orElse(PROGRAM);
-                return logic.orElseGet(()-> (___command, ___args)-> {
+                return logic.orElseGet(()-> (___isAdminMode, ___command, ___args)-> {
                     final var sbArgs = inputArgsToStringBuilder(___args, ",");
                     final var adminCommand = String.format("Exit (Start-Process %s -Wait -PassThru%s%s%s).ExitCode",
-                            condQuote(___command, true), isAdmin ? " -Verb RunAs": "", sbArgs.length() == 0 ? "" : " -argumentlist ", sbArgs);
+                            condQuote(___command, true), ___isAdminMode ? " -Verb RunAs": "", sbArgs.length() == 0 ? "" : " -argumentlist ", sbArgs);
                     final var argsAdder = new ListAdder<>(args);
                     argsAdder.addAll(()-> PROGRAM.equals(___command.toLowerCase(Locale.ROOT)), List.of("-WindowStyle","Hidden"));
                     argsAdder.add("-EncodedCommand");
@@ -156,7 +155,7 @@ public final class PowerShell implements ICommandArray {
                     adminModeHeader.stream().map(___header -> ___header + "\n").forEach(sbAdminCommand::append);
                     sbAdminCommand.append(adminCommand);
                     return encodeCommand(sbAdminCommand.toString());
-                }).apply(internalCommand, getAllInputArgs());
+                }).generate(isAdmin, internalCommand, getAllInputArgs());
             });
         }
 
@@ -487,7 +486,7 @@ public final class PowerShell implements ICommandArray {
          * @param adminLogic Must hold the override logic.
          * @return An instance of PowerShellBuilder.
          */
-        public PowerShellBuilder setAdminModeLogic(final BiFunction<String, List<String>, String> adminLogic) {
+        public PowerShellBuilder setAdminModeLogic(final IPSAdminModeLogic adminLogic) {
             this.adminLogic = adminLogic;
             return this;
         }

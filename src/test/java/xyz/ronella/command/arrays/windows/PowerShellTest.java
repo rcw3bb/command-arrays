@@ -619,7 +619,7 @@ public class PowerShellTest {
                     .setCommand("-Command")
                     .addArgs(List.of("Arg1", "Arg2"))
                     .setAdminMode(true)
-                    .setAdminModeLogic((___command, ___args) -> String.format("Command: %s Args: %s", ___command, String.join(",", ___args)))
+                    .setAdminModeLogic((___isAdminMode, ___command, ___args) -> String.format("Command: %s Args: %s", ___command, String.join(",", ___args)))
                     .build();
 
             assertEquals(expected, String.join(" ", ps.getCommand()));
