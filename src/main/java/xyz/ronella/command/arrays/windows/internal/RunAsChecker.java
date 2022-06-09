@@ -1,4 +1,4 @@
-package xyz.ronella.command.arrays.windows;
+package xyz.ronella.command.arrays.windows.internal;
 
 import java.io.File;
 import java.io.IOException;
