@@ -138,6 +138,8 @@ nexusPublishing {
 
 closeAndReleaseSonatypeStagingRepository.dependsOn('publishToSonatype')
 
+pmdTest.enabled = false
+
 test {
     dependsOn(pmdMain)
     finalizedBy(jacocoTestReport)
