@@ -305,7 +305,7 @@ public final class PowerShell implements ICommandArray {
          * @param headers The header commands to be added.
          * @return An instance of PowerShellBuilder.
          */
-        public PowerShellBuilder addAdminModeHeader(final Collection<String> headers) {
+        public PowerShellBuilder addAdminModeHeaders(final Collection<String> headers) {
             this.adminModeHeader.addAll(headers);
             return this;
         }
@@ -316,7 +316,7 @@ public final class PowerShell implements ICommandArray {
          * @param headers The header commands to be added.
          * @return An instance of PowerShellBuilder.
          */
-        public PowerShellBuilder addAdminModeHeader(final BooleanSupplier when, final Collection<String> headers) {
+        public PowerShellBuilder addAdminModeHeaders(final BooleanSupplier when, final Collection<String> headers) {
             if (when.getAsBoolean()) {
                 this.adminModeHeader.addAll(headers);
             }
@@ -415,46 +415,46 @@ public final class PowerShell implements ICommandArray {
 
         /**
          * Use this to add arguments after the normal arguments.
-         * @param zArgs The arguments to be added.
+         * @param args The arguments to be added.
          * @return An instance of PowerShellBuilder.
          */
-        public PowerShellBuilder addZArgs(final Collection<String> zArgs) {
-            this.inputZArgs.addAll(zArgs);
+        public PowerShellBuilder addZArgs(final Collection<String> args) {
+            this.inputZArgs.addAll(args);
             return this;
         }
 
         /**
          * Use this to add arguments after the normal arguments.
          * @param when Only apply the method when this returns true.
-         * @param zArgs The arguments to be added.
+         * @param args The arguments to be added.
          * @return An instance of PowerShellBuilder.
          */
-        public PowerShellBuilder addZArgs(final BooleanSupplier when, final Collection<String> zArgs) {
+        public PowerShellBuilder addZArgs(final BooleanSupplier when, final Collection<String> args) {
             if (when.getAsBoolean()) {
-                this.inputZArgs.addAll(zArgs);
+                this.inputZArgs.addAll(args);
             }
             return this;
         }
 
         /**
          * Use this to add an argument after the normal arguments.
-         * @param zArg The argument to be added.
+         * @param arg The argument to be added.
          * @return An instance of PowerShellBuilder.
          */
-        public PowerShellBuilder addZArg(final String zArg) {
-            this.inputZArgs.add(zArg);
+        public PowerShellBuilder addZArg(final String arg) {
+            this.inputZArgs.add(arg);
             return this;
         }
 
         /**
          * Use this to add an argument after the normal arguments.
          * @param when Only apply the method when this returns true.
-         * @param zArg The argument to be added.
+         * @param arg The argument to be added.
          * @return An instance of PowerShellBuilder.
          */
-        public PowerShellBuilder addZArg(final BooleanSupplier when, final String zArg) {
+        public PowerShellBuilder addZArg(final BooleanSupplier when, final String arg) {
             if (when.getAsBoolean()) {
-                this.inputZArgs.add(zArg);
+                this.inputZArgs.add(arg);
             }
             return this;
         }
