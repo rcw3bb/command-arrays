@@ -282,7 +282,7 @@ public final class PowerShell implements ICommandArray {
          * @param header The single header command to be added.
          * @return An instance of PowerShellBuilder.
          */
-        public PowerShellBuilder addAdminHeader(final String header) {
+        public PowerShellBuilder addAdminModeHeader(final String header) {
             this.adminModeHeader.add(header);
             return this;
         }
@@ -293,7 +293,7 @@ public final class PowerShell implements ICommandArray {
          * @param header The single header command to be added.
          * @return An instance of PowerShellBuilder.
          */
-        public PowerShellBuilder addAdminHeader(final BooleanSupplier when, final String header) {
+        public PowerShellBuilder addAdminModeHeader(final BooleanSupplier when, final String header) {
             if (when.getAsBoolean()) {
                 this.adminModeHeader.add(header);
             }
@@ -306,7 +306,7 @@ public final class PowerShell implements ICommandArray {
          * @param headers The header commands to be added.
          * @return An instance of PowerShellBuilder.
          */
-        public PowerShellBuilder addAdminHeader(final Collection<String> headers) {
+        public PowerShellBuilder addAdminModeHeader(final Collection<String> headers) {
             this.adminModeHeader.addAll(headers);
             return this;
         }
@@ -317,7 +317,7 @@ public final class PowerShell implements ICommandArray {
          * @param headers The header commands to be added.
          * @return An instance of PowerShellBuilder.
          */
-        public PowerShellBuilder addAdminHeader(final BooleanSupplier when, final Collection<String> headers) {
+        public PowerShellBuilder addAdminModeHeader(final BooleanSupplier when, final Collection<String> headers) {
             if (when.getAsBoolean()) {
                 this.adminModeHeader.addAll(headers);
             }
@@ -487,7 +487,7 @@ public final class PowerShell implements ICommandArray {
          * @param adminLogic Must hold the override logic.
          * @return An instance of PowerShellBuilder.
          */
-        public PowerShellBuilder setAdminLogic(final BiFunction<String, List<String>, String> adminLogic) {
+        public PowerShellBuilder setAdminModeLogic(final BiFunction<String, List<String>, String> adminLogic) {
             this.adminLogic = adminLogic;
             return this;
         }

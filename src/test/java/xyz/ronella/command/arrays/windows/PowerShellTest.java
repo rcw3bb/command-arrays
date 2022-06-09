@@ -61,7 +61,7 @@ public class PowerShellTest {
                 .setCommand("'-Command'")
                 .addArgs(List.of("\"Write-Output\"", "Hello world"))
                 .setAdminMode(true)
-                .addAdminHeader("$ProgressPreference = 'SilentlyContinue'")
+                .addAdminModeHeader("$ProgressPreference = 'SilentlyContinue'")
                 .build();
 
         assertEquals(expected, String.join(" ", ps.getCommand()));
@@ -76,7 +76,7 @@ public class PowerShellTest {
                 .setCommand("'-Command'")
                 .addArgs(List.of("\"Write-Output\"", "Hello world"))
                 .setAdminMode(true)
-                .addAdminHeader(()-> true, "$ProgressPreference = 'SilentlyContinue'")
+                .addAdminModeHeader(()-> true, "$ProgressPreference = 'SilentlyContinue'")
                 .build();
 
         assertEquals(expected, String.join(" ", ps.getCommand()));
@@ -91,7 +91,7 @@ public class PowerShellTest {
                 .setCommand("'-Command'")
                 .addArgs(List.of("\"Write-Output\"", "Hello world"))
                 .setAdminMode(true)
-                .addAdminHeader(()-> false, "$ProgressPreference = 'SilentlyContinue'")
+                .addAdminModeHeader(()-> false, "$ProgressPreference = 'SilentlyContinue'")
                 .build();
 
         assertEquals(expected, String.join(" ", ps.getCommand()));
@@ -106,7 +106,7 @@ public class PowerShellTest {
                 .setCommand("'-Command'")
                 .addArgs(List.of("\"Write-Output\"", "Hello world"))
                 .setAdminMode(true)
-                .addAdminHeader(List.of("$ProgressPreference = 'SilentlyContinue'"))
+                .addAdminModeHeader(List.of("$ProgressPreference = 'SilentlyContinue'"))
                 .build();
 
         assertEquals(expected, String.join(" ", ps.getCommand()));
@@ -121,7 +121,7 @@ public class PowerShellTest {
                 .setCommand("'-Command'")
                 .addArgs(List.of("\"Write-Output\"", "Hello world"))
                 .setAdminMode(true)
-                .addAdminHeader(()-> true, List.of("$ProgressPreference = 'SilentlyContinue'"))
+                .addAdminModeHeader(()-> true, List.of("$ProgressPreference = 'SilentlyContinue'"))
                 .build();
 
         assertEquals(expected, String.join(" ", ps.getCommand()));
@@ -136,7 +136,7 @@ public class PowerShellTest {
                 .setCommand("'-Command'")
                 .addArgs(List.of("\"Write-Output\"", "Hello world"))
                 .setAdminMode(true)
-                .addAdminHeader(()-> false, List.of("$ProgressPreference = 'SilentlyContinue'"))
+                .addAdminModeHeader(()-> false, List.of("$ProgressPreference = 'SilentlyContinue'"))
                 .build();
 
         assertEquals(expected, String.join(" ", ps.getCommand()));
@@ -619,7 +619,7 @@ public class PowerShellTest {
                     .setCommand("-Command")
                     .addArgs(List.of("Arg1", "Arg2"))
                     .setAdminMode(true)
-                    .setAdminLogic((___command, ___args) -> String.format("Command: %s Args: %s", ___command, String.join(",", ___args)))
+                    .setAdminModeLogic((___command, ___args) -> String.format("Command: %s Args: %s", ___command, String.join(",", ___args)))
                     .build();
 
             assertEquals(expected, String.join(" ", ps.getCommand()));
