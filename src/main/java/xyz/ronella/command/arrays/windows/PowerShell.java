@@ -148,7 +148,7 @@ public final class PowerShell implements ICommandArray {
                 return logic.orElseGet(()-> (___command, ___args)-> {
                     final var sbArgs = inputArgsToStringBuilder(___args, ",");
                     final var adminCommand = String.format("Exit (Start-Process %s -Wait -PassThru%s%s%s).ExitCode",
-                            condQuote(___command), isAdmin ? " -Verb RunAs": "", sbArgs.length() == 0 ? "" : " -argumentlist ", sbArgs);
+                            condQuote(___command, true), isAdmin ? " -Verb RunAs": "", sbArgs.length() == 0 ? "" : " -argumentlist ", sbArgs);
                     final var argsAdder = new ListAdder<>(args);
                     argsAdder.addAll(()-> PROGRAM.equals(___command.toLowerCase(Locale.ROOT)), List.of("-WindowStyle","Hidden"));
                     argsAdder.add("-EncodedCommand");
@@ -482,13 +482,7 @@ public final class PowerShell implements ICommandArray {
         }
 
         /**
-         * Overrides the generation of command for elevated mode (i.e. RunAs). The default is the following:
-         *
-         * {@code (___command, ___args)-> {
-         *     var sbArgs = inputArgsToStringBuilder(___args);
-         *     return String.format("Exit (Start-Process %s -Wait -PassThru -Verb RunAs%s%s).ExitCode",
-         *             quote(___command), (sbArgs.length() == 0 ? "" : " -argumentlist "), sbArgs);
-         * }}
+         * Overrides the generation of command when using in admin mode.
          *
          * @param adminLogic Must hold the override logic.
          * @return An instance of PowerShellBuilder.

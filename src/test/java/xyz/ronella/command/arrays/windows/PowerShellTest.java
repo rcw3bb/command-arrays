@@ -142,14 +142,40 @@ public class PowerShellTest {
     }
 
     @Test
-    public void nonAdminModeWriteOutput() {
+    public void adminModeEchoTest() {
+        var expected = "powershell.exe -EncodedCommand " +
+                "RQB4AGkAdAAgACgAUwB0AGEAcgB0AC0AUAByAG8AYwBlAHMAcwAgACIAYwBtAGQAIgAgAC0AVwBhAGkAdAAgAC0AUABhAHMAcwBUAGgAcgB1ACAALQBWAGUAcgBiACAAUgB1AG4AQQBzACAALQBhAHIAZwB1AG0AZQBuAHQAbABpAHMAdAAgACcALwBrACcALAAnAGUAYwBoAG8AIAB0AGUAcwB0ACcAKQAuAEUAeABpAHQAQwBvAGQAZQA=";
+
+        var ps = PowerShell.getBuilder()
+                .setCommand("literal:cmd")
+                .addArgs(List.of("'/k'", "literal:'echo test'"))
+                .setAdminMode(true)
+                .build();
+
+        assertEquals(expected, String.join(" ", ps.getCommand()));
+    }
+
+    @Test
+    public void nonAdminModeEchoTest() {
         var expected = "powershell.exe -EncodedCommand " +
                 "RQB4AGkAdAAgACgAUwB0AGEAcgB0AC0AUAByAG8AYwBlAHMAcwAgACIAYwBtAGQAIgAgAC0AVwBhAGkAdAAgAC0AUABhAHMAcwBUAGgAcgB1ACAALQBhAHIAZwB1AG0AZQBuAHQAbABpAHMAdAAgACcALwBrACcALAAnAGUAYwBoAG8AIAB0AGUAcwB0ACcAKQAuAEUAeABpAHQAQwBvAGQAZQA=";
 
         var ps = PowerShell.getBuilder()
-                .setCommand("cmd")
+                .setCommand("literal:cmd")
                 .addArgs(List.of("'/k'", "literal:'echo test'"))
                 .setAdminMode(false)
+                .build();
+
+        assertEquals(expected, String.join(" ", ps.getCommand()));
+    }
+
+    @Test
+    public void normalLiteralEchoTest() {
+        var expected = "powershell.exe Write-Output \"Hello world\"";
+
+        var ps = PowerShell.getBuilder()
+                .setCommand("literal:Write-Output")
+                .addArg("literal:\"Hello world\"")
                 .build();
 
         assertEquals(expected, String.join(" ", ps.getCommand()));
@@ -626,4 +652,6 @@ public class PowerShellTest {
             assertEquals(expected, String.join(" ", ps.getCommand()));
         }
     }
+
+
 }
