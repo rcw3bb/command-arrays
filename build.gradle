@@ -131,7 +131,7 @@ nexusPublishing {
         sonatype {
             nexusUrl = uri('https://oss.sonatype.org/service/local/')
             snapshotRepositoryUrl = uri('https://oss.sonatype.org/content/repositories/snapshots/')
-            //stagingProfileId = ""
+            stagingProfileId = "142f3cca5418da"
         }
     }
 }
