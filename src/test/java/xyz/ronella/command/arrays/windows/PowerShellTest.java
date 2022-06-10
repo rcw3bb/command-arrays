@@ -2,9 +2,6 @@ package xyz.ronella.command.arrays.windows;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import xyz.ronella.command.arrays.windows.internal.RunAsChecker;
-import xyz.ronella.trivial.decorator.ListAdder;
-import xyz.ronella.trivial.decorator.StringBuilderAppender;
 
 import java.util.*;
 

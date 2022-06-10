@@ -1,6 +1,5 @@
 package xyz.ronella.command.arrays.windows;
 
-import xyz.ronella.command.arrays.windows.internal.RunAsChecker;
 import xyz.ronella.trivial.decorator.ListAdder;
 import xyz.ronella.trivial.decorator.StringBuilderAppender;
 import xyz.ronella.trivial.handy.ICommandArray;
