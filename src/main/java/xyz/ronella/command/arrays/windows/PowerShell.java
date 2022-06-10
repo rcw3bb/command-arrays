@@ -23,8 +23,27 @@ public final class PowerShell implements ICommandArray {
      * The program to use for this implementation.
      */
     public static final String PROGRAM = "powershell.exe";
-
+    private static final String REGEX_LITERAL = "^[Ll][Ii][Tt][Ee][Rr][Aa][Ll]:";
+    private static final String LITERAL_MATCHER = String.format("%s(.*)", REGEX_LITERAL);
     private final ICommandArray array;
+
+    /**
+     * Get the value of the text without any prefix.
+     * @param text The value that potentially has prefix.
+     * @return A clean text.
+     */
+    public static String getValue(final String text) {
+        return text.matches(LITERAL_MATCHER) ? text.replaceFirst(REGEX_LITERAL, "") : text;
+    }
+
+    /**
+     * Encode the text to base64.
+     * @param text The text to be encoded to base 64.
+     * @return A base64 text.
+     */
+    public static String encodeText(final String text) {
+        return Base64.getEncoder().encodeToString(text.getBytes(StandardCharsets.UTF_16LE));
+    }
 
     private PowerShell(final PowerShellBuilder builder) {
         final var arrayBuilder = CommandArray.getBuilder()
@@ -64,8 +83,6 @@ public final class PowerShell implements ICommandArray {
          */
         private static final List<String> DEFAULT_ARGS = List.of("-NoProfile", "-InputFormat", "None", "-ExecutionPolicy", "Bypass");
         private static final String REGEX_RAW_PREFIX = "^[\"'&{].*";
-        private static final String REGEX_LITERAL = "^[Ll][Ii][Tt][Ee][Rr][Aa][Ll]:";
-        private static final String LITERAL_MATCHER = String.format("%s(.*)", REGEX_LITERAL);
         private String command;
         private final List<String> progArgs;
         private final List<String> args;
@@ -97,7 +114,7 @@ public final class PowerShell implements ICommandArray {
             var output = quote(text);
 
             if (text.matches(LITERAL_MATCHER)) {
-                final var cleanedText = text.replaceFirst(REGEX_LITERAL, "");
+                final var cleanedText = PowerShell.getValue(text);
                 output = forceQuote ? quote(cleanedText) : cleanedText;
             }
 
@@ -110,7 +127,7 @@ public final class PowerShell implements ICommandArray {
 
         private String condTripleQuote(final String text) {
             return argToSingleLine(text).matches(LITERAL_MATCHER)
-                    ? text.replaceFirst(REGEX_LITERAL, "")
+                    ? PowerShell.getValue(text)
                     : tripleQuote(text);
         }
 
@@ -144,18 +161,18 @@ public final class PowerShell implements ICommandArray {
             addrArgs.add(() -> {
                 final var logic = Optional.ofNullable(this.adminLogic);
                 final var internalCommand =  Optional.ofNullable(command).orElse(PROGRAM);
-                return logic.orElseGet(()-> (___isAdminMode, ___command, ___args)-> {
-                    final var sbArgs = inputArgsToStringBuilder(___args, ",");
+                return logic.orElseGet(()-> (___isAdminMode, ___adminHeaders, ___progArgs, ___command, ___commandArgs)-> {
+                    final var sbArgs = inputArgsToStringBuilder(___commandArgs, ",");
                     final var adminCommand = String.format("Exit (Start-Process %s -Wait -PassThru%s%s%s).ExitCode",
                             condQuote(___command, true), ___isAdminMode ? " -Verb RunAs": "", sbArgs.length() == 0 ? "" : " -argumentlist ", sbArgs);
-                    final var argsAdder = new ListAdder<>(args);
+                    final var argsAdder = new ListAdder<>(___progArgs);
                     argsAdder.addAll(()-> PROGRAM.equals(___command.toLowerCase(Locale.ROOT)), List.of("-WindowStyle","Hidden"));
                     argsAdder.add("-EncodedCommand");
                     final var sbAdminCommand = new StringBuilder();
-                    adminModeHeader.stream().map(___header -> ___header + "\n").forEach(sbAdminCommand::append);
+                    ___adminHeaders.stream().map(___header -> ___header + "\n").forEach(sbAdminCommand::append);
                     sbAdminCommand.append(adminCommand);
-                    return encodeCommand(sbAdminCommand.toString());
-                }).generate(isAdmin, internalCommand, getAllInputArgs());
+                    return PowerShell.encodeText(sbAdminCommand.toString());
+                }).generate(isAdmin, adminModeHeader, args, internalCommand, getAllInputArgs());
             });
         }
 
@@ -369,10 +386,6 @@ public final class PowerShell implements ICommandArray {
             return this;
         }
 
-        private String encodeCommand(final String command) {
-            return Base64.getEncoder().encodeToString(command.getBytes(StandardCharsets.UTF_16LE));
-        }
-
         /**
          * Use this to add normal encoded argument to powershell.
          * This must be an argument to -EncodedCommand parameter.
@@ -380,7 +393,7 @@ public final class PowerShell implements ICommandArray {
          * @return An instance of PowerShellBuilder.
          */
         public PowerShellBuilder addEncodedArg(final String arg) {
-            final var encodedArg = encodeCommand(arg);
+            final var encodedArg = PowerShell.encodeText(arg);
             this.inputArgs.add(encodedArg);
             this.encodedArgs.add(encodedArg);
             return this;

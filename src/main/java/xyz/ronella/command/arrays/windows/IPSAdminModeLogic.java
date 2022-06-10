@@ -14,9 +14,11 @@ public interface IPSAdminModeLogic {
     /**
      * The method that must hold the implementation of the admin mode logic.
      * @param isAdminMode Must be true to indicate that output must be runAs compatible.
+     * @param adminHeader Holds the adminModeHeaders.
+     * @param psArgs The arguments for the powershell.exe.
      * @param command The command that can be executed in rusAs terminal (i.e. command prompt).
-     * @param args The arguments for the command.
+     * @param commandArgs The arguments for the command.
      * @return The generated command.
      */
-    String generate(boolean isAdminMode, String command, List<String> args);
+    String generate(boolean isAdminMode, List<String> adminHeader, List<String> psArgs,String command, List<String> commandArgs);
 }

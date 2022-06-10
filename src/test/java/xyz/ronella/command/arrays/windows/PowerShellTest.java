@@ -3,6 +3,8 @@ package xyz.ronella.command.arrays.windows;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import xyz.ronella.command.arrays.windows.internal.RunAsChecker;
+import xyz.ronella.trivial.decorator.ListAdder;
+import xyz.ronella.trivial.decorator.StringBuilderAppender;
 
 import java.util.*;
 
@@ -619,7 +621,7 @@ public class PowerShellTest {
                     .setCommand("-Command")
                     .addArgs(List.of("Arg1", "Arg2"))
                     .setAdminMode(true)
-                    .setAdminModeLogic((___isAdminMode, ___command, ___args) -> String.format("Command: %s Args: %s", ___command, String.join(",", ___args)))
+                    .setAdminModeLogic((___isAdminMode, ___header, ___psArgs, ___command, ___args) -> String.format("Command: %s Args: %s", ___command, String.join(",", ___args)))
                     .build();
 
             assertEquals(expected, String.join(" ", ps.getCommand()));
@@ -654,5 +656,14 @@ public class PowerShellTest {
         }
     }
 
+    @Test
+    public void literalLowerCaseGetValue() {
+        assertEquals("value", PowerShell.getValue("literal:value"));
+    }
+
+    @Test
+    public void literalUpperCaseGetValue() {
+        assertEquals("value", PowerShell.getValue("LITERAL:value"));
+    }
 
 }
